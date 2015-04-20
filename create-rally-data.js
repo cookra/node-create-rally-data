@@ -1,7 +1,5 @@
 var workspaceRef = '/workspace/33663719110'; //N Data
 
-var projectRefs = [];
-var topProjectRefs = [];
 var topReleases = [];
 var millisecondsInDay = 86400000;
 
@@ -56,6 +54,8 @@ var rally = require('rally'),
     }
     
     function getProjects(workspaceRef){
+        var projectRefs = [];
+        var topProjectRefs = [];
         rallyApi.query({
             ref: workspaceRef + '/projects',
             limit: Infinity,
@@ -70,7 +70,7 @@ var rally = require('rally'),
                     topProjectRefs.push(results.Results[i]._ref);
                 }
             }
-            createTimeboxes(projectRefs);
+            createTimeboxes(projectRefs,topProjectRefs);
         }).fail(function(errors) {
             console.log(errors);
             return 0;
@@ -79,14 +79,14 @@ var rally = require('rally'),
     }
     
     
-    function createTimeboxes(projectRefs){
+    function createTimeboxes(projectRefs, topProjectRefs){
         console.log('Count of Projects', projectRefs.length);
         for(var i=0;i<projectRefs.length;i++){
             console.log(projectRefs[i]);
         }
         createReleases(projectRefs);
         createIterations(projectRefs);
-        createMilestones(projectRefs);
+        createMilestones(topProjectRefs);
     }
     
     function createReleases(projectRefs){
@@ -167,10 +167,10 @@ var rally = require('rally'),
         }
     }
     
-    function createMilestones(projectRefs){
+    function createMilestones(topProjectRefs){
+        console.log('CREATING MILESTONES...');
         var randomDaysBeforeRelease = randomInt(1, 7);
-        var topReleaseDates = [];
-        var milestoneDates=[];
+        var milestones = [];
         for(var i=0;i<topProjectRefs.length;i++){
             rallyApi.query({
                 type: 'release',        
@@ -178,29 +178,34 @@ var rally = require('rally'),
                 fetch: ['ReleaseStartDate', 'ReleaseDate','Project'],
                 query: queryUtils.where('Project', '=', topProjectRefs[i])
             }).then(function(results) {
+                console.log('going back ' + randomDaysBeforeRelease + ' days');
                 for (var i=0; i<results.Results.length; i++){
                     topReleases.push(results.Results[i])
-                }
-                return topReleases;
-            }).then(function(topReleases){
-                var dateStrings = [];
-                for (var i=0;i<topReleases.length;i++){
-                    dateStrings.push((topReleases[i].ReleaseDate).substring(0,10));
-                }
-                return dateStrings;
-            }).then(function(dateStrings){
-                for (var i=0;i<dateStrings.length;i++){
-                    topReleaseDates.push(new Date(dateStrings[i]));
-                }    
-                return topReleaseDates;
-            }).then(function(topReleaseDates){
-                console.log('going back ' + randomDaysBeforeRelease + ' days');
-                for (var i=0;i<topReleaseDates.length;i++){
-                    milestoneDates.push(new Date(topReleaseDates[i] - millisecondsInDay*randomDaysBeforeRelease));
-                }
-                console.log('topReleaseDates', topReleaseDates);
-                console.log('milestoneDates', milestoneDates);
-                return milestoneDates;  
+                    var milestoneDate = new Date((new Date(results.Results[i].ReleaseDate.substring(0,10))) - millisecondsInDay*randomDaysBeforeRelease);
+                    var targetProjectRef = results.Results[i].Project._ref;
+                    var targetProjectName = results.Results[i].Project._refObjectName;
+                    var milestoneName = 'Milestone' + i + ' in ' + targetProjectName;
+                    
+                    rallyApi.create({
+                        type: 'milestone',
+                        data: {
+                            Name: milestoneName,
+                            TargetDate: milestoneDate,
+                            TargetProject: targetProjectRef
+                        },
+                        fetch: ['ObjectID'],  
+                        scope: {
+                            project: targetProjectRef
+                        },
+                        requestOptions: {} 
+                        },  function(error, result) {
+                            if(error) {
+                                console.log(error);
+                            } else {
+                                milestones.push(result.Object._ref);
+                            }
+                    });
+                } 
             }).fail(function(errors) {
                 console.log(errors);
                 return 0;
