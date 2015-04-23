@@ -42,29 +42,29 @@ function getProjects() {
 function makeReleases(result) {
     console.log('CREATING RELEASES...');
     var releases = [];
-    var numOfReleasesEachProject = 2;//3 
+    var numOfReleasesEachProject = 2;
     var releaseLength = 30;
     var today = new Date();
-    for(var n=0; n<result.Results.length; n++){
-        for(var i=0; i<numOfReleasesEachProject; i++){
-            var releaseStartDate = new Date(today.getTime() + millisecondsInDay*i*(releaseLength));
+        for(var n=0; n<numOfReleasesEachProject; n++){
+            var releaseStartDate = new Date(today.getTime() + millisecondsInDay*n*(releaseLength));
             var releaseDate = new Date(releaseStartDate.getTime() + millisecondsInDay*releaseLength);
-            var releaseName = 'Release ' + i;
-            releases.push(rallyApi.create({
-                type: 'release',
-                data: {
-                    Name: releaseName,
-                    ReleaseStartDate: releaseStartDate.toISOString(),
-                    ReleaseDate: releaseDate.toISOString(),
-                    State: 'Planning'
-                },
-                fetch: ['ObjectID','Project'],  
-                scope: {
-                    project: result.Results[i]
-                },
-            }));
+            var releaseName = 'Release ' + n;
+            for(var i=0; i<result.Results.length; i++){    
+                releases.push(rallyApi.create({
+                    type: 'release',
+                    data: {
+                        Name: releaseName,
+                        ReleaseStartDate: releaseStartDate.toISOString(),
+                        ReleaseDate: releaseDate.toISOString(),
+                        State: 'Planning'
+                    },
+                    fetch: ['ObjectID','Project'],  
+                    scope: {
+                        project: result.Results[i]
+                    },
+                }));
+            }
         }
-    }
     return releases;
 }
 
