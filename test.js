@@ -5,7 +5,12 @@ var millisecondsInDay = 86400000;
 createRally();
 
 getProjects()
-    .then(makeReleases)
+    .then(function(result){
+        var timeboxes = [];
+        timeboxes.push(makeReleases(result));
+        timeboxes.push(makeIterations(result));
+        return timeboxes;
+    })
     //.then(makeIterations)
     .then(onSuccess)
     .fail(onError);
@@ -15,7 +20,7 @@ function createRally(){
     rally = require('rally'),
     queryUtils = rally.util.query,
     rallyApi = rally({
-        apiKey: '_abc123', 
+        apiKey: '_abc123', //nick@wsapi.com
         server: 'https://rally1.rallydev.com',  
         requestOptions: {
             headers: {
@@ -67,6 +72,36 @@ function makeReleases(result) {
         }
     return releases;
 }
+
+function makeIterations(result) {
+    console.log('CREATING  ITERATIONS...');
+    var iterations = [];
+    var numOfIterationsEachProject = 4;
+    var iterationLength = 15;
+    var today = new Date();
+        for(var n=0; n<numOfIterationsEachProject; n++){
+            var iterationStartDate = new Date(today.getTime() + millisecondsInDay*n*(iterationLength));
+            var iterationEndDate = new Date(iterationStartDate.getTime() + millisecondsInDay*iterationLength);
+            var iterationName = 'Iteration ' + n;
+            for(var i=0; i<result.Results.length; i++){    
+                iterations.push(rallyApi.create({
+                    type: 'iteration',
+                    data: {
+                        Name: iterationName,
+                        StartDate: iterationStartDate.toISOString(),
+                        EndDate: iterationEndDate.toISOString(),
+                        State: 'Planning'
+                    },
+                    fetch: ['ObjectID','Project'],  
+                    scope: {
+                        project: result.Results[i]
+                    },
+                }));
+            }
+        }
+    return iterations;
+}
+
 
 function onSuccess(result) {
     console.log('Success!', result);
