@@ -1,3 +1,5 @@
+var q = require('q');
+
 var rally = null;
 var workspaceRef = '/workspace/33663719110'; //N Data
 var millisecondsInDay = 86400000;
@@ -9,9 +11,9 @@ getProjects()
         var timeboxes = [];
         timeboxes.push(makeReleases(result));
         timeboxes.push(makeIterations(result));
-        return timeboxes;
+        return q.all(timeboxes);
     })
-    //.then(makeIterations)
+    .then(makeStories)
     .then(onSuccess)
     .fail(onError);
 
@@ -20,7 +22,7 @@ function createRally(){
     rally = require('rally'),
     queryUtils = rally.util.query,
     rallyApi = rally({
-        apiKey: '_abc123', //nick@wsapi.com
+        apiKey: '_abc123', 
         server: 'https://rally1.rallydev.com',  
         requestOptions: {
             headers: {
@@ -70,7 +72,7 @@ function makeReleases(result) {
                 }));
             }
         }
-    return releases;
+    return q.all(releases);
 }
 
 function makeIterations(result) {
@@ -99,10 +101,22 @@ function makeIterations(result) {
                 }));
             }
         }
-    return iterations;
+    return q.all(iterations);
 }
 
+function makeStories(result){
+    var releases = result[0];
+    var iterations = result[1];
+    for (i = 0; i < releases.length; i++) { 
+        console.log(releases[i].Object._ref); 
+    }
+    for (i = 0; i < iterations.length; i++) { 
+        console.log(iterations[i].Object._ref); 
+    }
+    
+    return 1;
 
+}
 function onSuccess(result) {
     console.log('Success!', result);
 }
